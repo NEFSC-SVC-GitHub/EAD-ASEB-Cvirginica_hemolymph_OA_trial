@@ -44,6 +44,7 @@ ROS_dat             <- read.csv(file="Flow_cytometry_data/Output/DCFHDA_results.
 MitPotential_dat <- MitPotential_dat %>% 
       dplyr::mutate(pCO2 = case_when(pCO2_Treatment == "Low"  ~ "500 μatm", pCO2_Treatment == "High" ~ "1200 μatm")) %>% # add a column for pCO2
       dplyr::mutate(Ratio_FL1.FL2 = as.numeric(Ratio_FL1.FL2))  %>% 
+      dplyr::mutate(Ratio_FL2.FL1 =  )  %>%       
       dplyr::mutate(pCO2_Treatment = as.factor(pCO2_Treatment))
 
 # parse by cell type for stats
