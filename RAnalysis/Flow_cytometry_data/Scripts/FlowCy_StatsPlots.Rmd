@@ -22,6 +22,7 @@ library(performance)
 library(kableExtra)
 library(pander)
 library(ggpubr)
+library(Rmisc)
 
 # SET WORKING DIRECTORY :::::::::::::::::::::::::::::::::::::::::::::::
 
@@ -44,7 +45,7 @@ ROS_dat             <- read.csv(file="Flow_cytometry_data/Output/DCFHDA_results.
 MitPotential_dat <- MitPotential_dat %>% 
       dplyr::mutate(pCO2 = case_when(pCO2_Treatment == "Low"  ~ "500 μatm", pCO2_Treatment == "High" ~ "1200 μatm")) %>% # add a column for pCO2
       dplyr::mutate(Ratio_FL1.FL2 = as.numeric(Ratio_FL1.FL2))  %>% 
-      dplyr::mutate(Ratio_FL2.FL1 =  )  %>%       
+      dplyr::mutate(Ratio_FL2.FL1 =  Mean_FL2/Mean_FL1)  %>%       
       dplyr::mutate(pCO2_Treatment = as.factor(pCO2_Treatment))
 
 # parse by cell type for stats
@@ -61,7 +62,7 @@ MitPotential_Degran <- MitPotential_dat %>% dplyr::filter(cell_type %in% 'degran
 
 MitPotential_dat %>% 
       na.omit() %>%  
-      summarySE(measurevar="Ratio_FL1.FL2", groupvars=c("pCO2_Treatment", "cell_type")) %>% 
+      summarySE(measurevar="Ratio_FL2.FL1", groupvars=c("pCO2_Treatment", "cell_type")) %>% 
       dplyr::mutate(pCO2 = case_when(pCO2_Treatment == "Low"  ~ "500 μatm", pCO2_Treatment == "High" ~ "1200 μatm")) %>% 
       dplyr::arrange(cell_type)
 
@@ -139,7 +140,7 @@ leveneTest(MitPot_Degran_ANOVA) # heteroscedasticity (absence of homoscedasticit
 
 
 
-MitPotenital_PLOT <- ggplot(MitPotential_dat, aes(x = factor(pCO2, level = c('500 μatm', '1200 μatm')), Ratio_FL1.FL2 , fill = pCO2)) +
+MitPotenital_PLOT <- ggplot(MitPotential_dat, aes(x = factor(pCO2, level = c('500 μatm', '1200 μatm')), Ratio_FL2.FL1 , fill = pCO2)) +
                           theme(panel.grid=element_blank()) +
                           geom_boxplot(size=0.2, width=0.5, alpha=0.1, aes(fill=pCO2)) +
                           scale_fill_manual(values=c("grey20","white")) +
@@ -155,11 +156,6 @@ MitPotenital_PLOT <- ggplot(MitPotential_dat, aes(x = factor(pCO2, level = c('50
                           stat_summary(fun.y=mean, geom="point", shape=18, size=4, color="black", fill="white") +
                           facet_wrap(~cell_type, scales = "free")  
 MitPotenital_PLOT # print this figure...
-
-
-# Export the figures to pdf
-ggarrange(MitPotenital_PLOT,ROS_PLOT,nrow = 2) %>%
-  ggexport(filename = "C:/Users/samuel.gurr/Documents/Github_repositories/Cvirginica_hemolymph_OA/RAnalysis/Flow_cytometry_data/Output/MitochondrialPotential_ROS.pdf")
 
 ```
 
@@ -283,6 +279,9 @@ ROS_PLOT <- ggplot(ROS_dat, aes(x = factor(pCO2, level = c('500 μatm', '1200 μ
                           facet_wrap(~cell_type, scales = "free")  
 ROS_PLOT # print this figure...
 
+# Export the figures to pdf
+ggarrange(MitPotenital_PLOT,ROS_PLOT,nrow = 2) %>%
+  ggexport(filename = "C:/Users/samuel.gurr/Documents/Github_repositories/Cvirginica_hemolymph_OA/RAnalysis/Flow_cytometry_data/Output/MitochondrialPotential_ROS.pdf")
 
 
 ```
