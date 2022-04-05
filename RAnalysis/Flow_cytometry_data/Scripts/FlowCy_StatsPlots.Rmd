@@ -23,38 +23,33 @@ library(kableExtra)
 library(pander)
 library(ggpubr)
 library(Rmisc)
-
+library(car)
 # SET WORKING DIRECTORY :::::::::::::::::::::::::::::::::::::::::::::::
 
- setwd("C:/Users/samjg/Documents/Github_repositories/Cvirginica_hemolymph_OA/RAnalysis/") # personal computer
+ setwd("C:/Users/samjg/Documents/Github_repositories/Cvirginica_hemolymph_OA_trial/RAnalysis/") # personal computer
 # setwd("C:/Users/samjg/Documents/Github_repositories/Airradians_multigen_OA/RAnalysis") # Work computer
 
 # LOAD DATA :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-MitPotential_dat    <- read.csv(file="Flow_cytometry_data/Output/JC10_results.csv", header=T)
-
+MitPotential_dat    <- read.csv(file="Flow_cytometry_data/Output/JC10_results.csv", header=T) %>% 
+                          dplyr::mutate(pCO2 = case_when(pCO2_Treatment == "Low"  ~ "500 μatm", pCO2_Treatment == "High" ~ "1200 μatm")) %>% # add a column for pCO2
+                          dplyr::mutate(Ratio_FL2.FL1 = as.numeric(Ratio_FL2.FL1))  %>% 
+                          dplyr::mutate(pCO2_Treatment = as.factor(pCO2_Treatment))
 ROS_dat             <- read.csv(file="Flow_cytometry_data/Output/DCFHDA_results.csv", header=T)
 
 ```
 
 
+# JC-10; itochondrial Potential 
 
+## Timepoint 1 (24 hrs)
 
-```{r Analysis - Mitochondrial Potential, echo=FALSE}
-
-# add column for pCO2 treatment
-MitPotential_dat <- MitPotential_dat %>% 
-      dplyr::mutate(pCO2 = case_when(pCO2_Treatment == "Low"  ~ "500 μatm", pCO2_Treatment == "High" ~ "1200 μatm")) %>% # add a column for pCO2
-      dplyr::mutate(Ratio_FL1.FL2 = as.numeric(Ratio_FL1.FL2))  %>% 
-      dplyr::mutate(Ratio_FL2.FL1 =  Mean_FL2/Mean_FL1)  %>%       
-      dplyr::mutate(pCO2_Treatment = as.factor(pCO2_Treatment))
+```{r Analysis - Mitochondrial Potential Timepoint 1, echo=FALSE}
 
 # parse by cell type for stats
-MitPotential_MG     <- MitPotential_dat %>% dplyr::filter(cell_type %in% 'mature_granular')   %>% na.omit()
-MitPotential_IG     <- MitPotential_dat %>% dplyr::filter(cell_type %in% 'immature_granular') %>% na.omit()
-MitPotential_MA     <- MitPotential_dat %>% dplyr::filter(cell_type %in% 'mature_agranular')  %>% na.omit()
-MitPotential_Degran <- MitPotential_dat %>% dplyr::filter(cell_type %in% 'degranulated')      %>% na.omit()
-
-
+MitPotential_MG_T1     <- MitPotential_dat %>% dplyr::filter(Timepoint %in% "1_day") %>% dplyr::filter(cell_type %in% 'mature_granular')   %>% na.omit()
+MitPotential_IG_T1     <- MitPotential_dat %>% dplyr::filter(Timepoint %in% "1_day") %>%  dplyr::filter(cell_type %in% 'immature_granular') %>% na.omit()
+MitPotential_MA_T1     <- MitPotential_dat %>% dplyr::filter(Timepoint %in% "1_day") %>%  dplyr::filter(cell_type %in% 'mature_agranular')  %>% na.omit()
+MitPotential_Degran_T1 <- MitPotential_dat %>% dplyr::filter(Timepoint %in% "1_day") %>%  dplyr::filter(cell_type %in% 'degranulated')      %>% na.omit()
 
 # view means :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
@@ -62,7 +57,7 @@ MitPotential_Degran <- MitPotential_dat %>% dplyr::filter(cell_type %in% 'degran
 
 MitPotential_dat %>% 
       na.omit() %>%  
-      summarySE(measurevar="Ratio_FL2.FL1", groupvars=c("pCO2_Treatment", "cell_type")) %>% 
+      summarySE(measurevar="Ratio_FL2.FL1", groupvars=c("pCO2_Treatment", "cell_type", "Timepoint")) %>% 
       dplyr::mutate(pCO2 = case_when(pCO2_Treatment == "Low"  ~ "500 μatm", pCO2_Treatment == "High" ~ "1200 μatm")) %>% 
       dplyr::arrange(cell_type)
 
@@ -70,68 +65,68 @@ MitPotential_dat %>%
 
 # ANOVA ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-
+MitPotential_dat_T1 <- MitPotential_dat %>% dplyr::filter(Timepoint %in% "1_day")
 
 # model - TWO way anova pCO2 * cell type ::::::::::::::::::::::::::::::::::
 
-MitPot_TwoWayANOVA <- lm(Ratio_FL1.FL2~pCO2_Treatment*cell_type, data = MitPotential_dat)
-pander(anova(MitPot_TwoWayANOVA), style='rmarkdown') # anova table of lmer
-# |            &nbsp;            | Df | Sum Sq  | Mean Sq | F value |  Pr(>F)   |
-# |:----------------------------:|:--:|:-------:|:-------:|:-------:|:---------:|
-# |      **pCO2_Treatment**      | 1  | 0.07293 | 0.07293 |  1.012  |  0.3212   |
-# |        **cell_type**         | 3  |  6.862  |  2.287  |  31.73  | 3.267e-10 |
-# | **pCO2_Treatment:cell_type** | 3  | 0.04299 | 0.01433 | 0.1988  |  0.8965   |
-# |        **Residuals**         | 36 |  2.595  | 0.07208 |   NA    |    NA     |
-shapiro.test(residuals(MitPot_TwoWayANOVA)) # normality of model residuals:  0.2058
-leveneTest(MitPot_TwoWayANOVA) # heteroscedasticity (absence of homoscedasticity): 0.818
+MitPot_TwoWayANOVA_T1 <- lm(Ratio_FL2.FL1~pCO2_Treatment*cell_type, data = MitPotential_dat_T1)
+pander(anova(MitPot_TwoWayANOVA_T1), style='rmarkdown') # anova table of lmer
+# |            &nbsp;            | Df | Sum Sq  | Mean Sq  | F value |  Pr(>F)   |
+# |:----------------------------:|:--:|:-------:|:--------:|:-------:|:---------:|
+# |      **pCO2_Treatment**      | 1  | 0.01791 | 0.01791  |  3.084  |  0.08672  | *
+# |        **cell_type**         | 3  | 0.9784  |  0.3261  |  56.16  | 2.122e-14 | **
+# | **pCO2_Treatment:cell_type** | 3  | 0.0121  | 0.004033 | 0.6946  |  0.5608   |
+# |        **Residuals**         | 40 | 0.2323  | 0.005807 |   NA    |    NA     |
+shapiro.test(residuals(MitPot_TwoWayANOVA_T1)) # normality of model residuals:  0.02832
+leveneTest(MitPot_TwoWayANOVA_T1) # heteroscedasticity (absence of homoscedasticity): 0.02984  
 
 
 # model - mature granular  ::::::::::::::::::::::::::::::::::
 
-MitPot_MG_ANOVA <- lm(Ratio_FL1.FL2~pCO2_Treatment, data = MitPotential_MG)
-pander(anova(MitPot_MG_ANOVA), style='rmarkdown') # anova table of lmer
-# |       &nbsp;       | Df | Sum Sq  | Mean Sq | F value | Pr(>F) |
-# |:------------------:|:--:|:-------:|:-------:|:-------:|:------:|
-# | **pCO2_Treatment** | 1  | 0.04441 | 0.04441 | 0.6667  | 0.4353 |
-# |   **Residuals**    | 9  | 0.5995  | 0.06662 |   NA    |   NA   |
-shapiro.test(residuals(MitPot_MG_ANOVA)) # normality of model residuals:  0.7315
-leveneTest(MitPot_MG_ANOVA) # heteroscedasticity (absence of homoscedasticity): 0.675
+MitPot_MG_ANOVA_T1 <- lm(Ratio_FL2.FL1~pCO2_Treatment, data = MitPotential_MG_T1)
+pander(anova(MitPot_MG_ANOVA_T1), style='rmarkdown') # anova table of lmer
+# |       &nbsp;       | Df |  Sum Sq  | Mean Sq  | F value | Pr(>F) |
+# |:------------------:|:--:|:--------:|:--------:|:-------:|:------:|
+# | **pCO2_Treatment** | 1  | 0.002395 | 0.002395 | 0.1801  | 0.6803 |
+# |   **Residuals**    | 10 |  0.133   |  0.0133  |   NA    |   NA   |
+shapiro.test(residuals(MitPot_MG_ANOVA_T1)) # normality of model residuals:  0.875
+leveneTest(MitPot_MG_ANOVA_T1) # heteroscedasticity (absence of homoscedasticity): 0.5652
 
 
 # model - immature granular  ::::::::::::::::::::::::::::::::::
 
-MitPot_IG_ANOVA <- lm(Ratio_FL1.FL2~pCO2_Treatment, data = MitPotential_IG)
-pander(anova(MitPot_IG_ANOVA), style='rmarkdown') # anova table of lmer
-# |       &nbsp;       | Df | Sum Sq  | Mean Sq | F value | Pr(>F) |
-# |:------------------:|:--:|:-------:|:-------:|:-------:|:------:|
-# | **pCO2_Treatment** | 1  | 0.06599 | 0.06599 | 0.4704  | 0.5101 |
-# |   **Residuals**    | 9  |  1.263  | 0.1403  |   NA    |   NA   |
-shapiro.test(residuals(MitPot_IG_ANOVA)) # normality of model residuals:  0.5247
-leveneTest(MitPot_IG_ANOVA) # heteroscedasticity (absence of homoscedasticity): 0.8426
+MitPot_IG_ANOVA_T1 <- lm(Ratio_FL2.FL1~pCO2_Treatment, data = MitPotential_IG_T1)
+pander(anova(MitPot_IG_ANOVA_T1), style='rmarkdown') # anova table of lmer
+# |       &nbsp;       | Df | Sum Sq  | Mean Sq  | F value | Pr(>F) |
+# |:------------------:|:--:|:-------:|:--------:|:-------:|:------:|
+# | **pCO2_Treatment** | 1  | 0.02537 | 0.02537  |  3.29   | 0.0998 | *
+# |   **Residuals**    | 10 | 0.07711 | 0.007711 |   NA    |   NA   |
+shapiro.test(residuals(MitPot_IG_ANOVA_T1)) # normality of model residuals:  0.7138
+leveneTest(MitPot_IG_ANOVA_T1) # heteroscedasticity (absence of homoscedasticity): 0.2661
 
 
 # model - mature agranular  ::::::::::::::::::::::::::::::::::
 
-MitPot_MA_ANOVA <- lm(Ratio_FL1.FL2~pCO2_Treatment, data = MitPotential_MA)
-pander(anova(MitPot_MA_ANOVA), style='rmarkdown') # anova table of lmer
-# |       &nbsp;       | Df |  Sum Sq   |  Mean Sq  |  F value  | Pr(>F) |
-# |:------------------:|:--:|:---------:|:---------:|:---------:|:------:|
-# | **pCO2_Treatment** | 1  | 3.117e-06 | 3.117e-06 | 5.874e-05 | 0.9941 |
-# |   **Residuals**    | 9  |  0.4775   |  0.05306  |    NA     |   NA   |
-shapiro.test(residuals(MitPot_MA_ANOVA)) # normality of model residuals:  0.07573
-leveneTest(MitPot_MA_ANOVA) # heteroscedasticity (absence of homoscedasticity): 0.8953
+MitPot_MA_ANOVA_T1 <- lm(Ratio_FL2.FL1~pCO2_Treatment, data = MitPotential_MA_T1)
+pander(anova(MitPot_MA_ANOVA_T1), style='rmarkdown') # anova table of lmer
+# |       &nbsp;       | Df |  Sum Sq  |  Mean Sq  | F value | Pr(>F)  |
+# |:------------------:|:--:|:--------:|:---------:|:-------:|:-------:|
+# | **pCO2_Treatment** | 1  | 0.002046 | 0.002046  |  3.961  | 0.07459 | *
+# |   **Residuals**    | 10 | 0.005164 | 0.0005164 |   NA    |   NA    |
+shapiro.test(residuals(MitPot_MA_ANOVA_T1)) # normality of model residuals:  0.9763
+leveneTest(MitPot_MA_ANOVA_T1) # heteroscedasticity (absence of homoscedasticity): 0.8042
 
 
 # model - degranulated ::::::::::::::::::::::::::::::::::
 
-MitPot_Degran_ANOVA <- lm(Ratio_FL1.FL2~pCO2_Treatment, data = MitPotential_Degran)
-pander(anova(MitPot_Degran_ANOVA), style='rmarkdown') # anova table of lmer
-# |       &nbsp;       | Df | Sum Sq  | Mean Sq | F value | Pr(>F) |
-# |:------------------:|:--:|:-------:|:-------:|:-------:|:------:|
-# | **pCO2_Treatment** | 1  | 0.00551 | 0.00551 | 0.1945  | 0.6696 |
-# |   **Residuals**    | 9  |  0.255  | 0.02833 |   NA    |   NA   |
-shapiro.test(residuals(MitPot_Degran_ANOVA)) # normality of model residuals:  0.7314
-leveneTest(MitPot_Degran_ANOVA) # heteroscedasticity (absence of homoscedasticity): 0.4407
+MitPot_Degran_ANOVA_T1 <- lm(Ratio_FL2.FL1~pCO2_Treatment, data = MitPotential_Degran_T1)
+pander(anova(MitPot_Degran_ANOVA_T1), style='rmarkdown') # anova table of lmer
+# |       &nbsp;       | Df |  Sum Sq  | Mean Sq  | F value | Pr(>F) |
+# |:------------------:|:--:|:--------:|:--------:|:-------:|:------:|
+# | **pCO2_Treatment** | 1  | 0.000202 | 0.000202 | 0.1187  | 0.7376 |
+# |   **Residuals**    | 10 | 0.01702  | 0.001702 |   NA    |   NA   |
+shapiro.test(residuals(MitPot_Degran_ANOVA_T1)) # normality of model residuals:  0.06423
+leveneTest(MitPot_Degran_ANOVA_T1) # heteroscedasticity (absence of homoscedasticity): 0.2162
 
 
 
@@ -140,7 +135,7 @@ leveneTest(MitPot_Degran_ANOVA) # heteroscedasticity (absence of homoscedasticit
 
 
 
-MitPotenital_PLOT <- ggplot(MitPotential_dat, aes(x = factor(pCO2, level = c('500 μatm', '1200 μatm')), Ratio_FL2.FL1 , fill = pCO2)) +
+MitPotenital_PLOT_T1 <- ggplot(MitPotential_dat_T1, aes(x = factor(pCO2, level = c('500 μatm', '1200 μatm')), Ratio_FL2.FL1 , fill = pCO2)) +
                           theme(panel.grid=element_blank()) +
                           geom_boxplot(size=0.2, width=0.5, alpha=0.1, aes(fill=pCO2)) +
                           scale_fill_manual(values=c("grey20","white")) +
@@ -148,19 +143,221 @@ MitPotenital_PLOT <- ggplot(MitPotential_dat, aes(x = factor(pCO2, level = c('50
                           theme_classic() +
                           scale_x_discrete(labels= c('~500 μatm', '~1200 μatm')) +
                          # scale_y_continuous(expand = c(0, 0), limits = c(0, 2)) +
-                          labs(title = "Cvirginica - Mitchondrial potenital under OA", 
+                          labs(title = "Cvirginica - Mitchondrial potential under OA (24 hrs)", 
                                y = expression(Arbitrary~units~"("~A~U~")"),
                                x = expression(italic(p)*CO[2]~Treatment~"("~μ*atm~")")) + 
                           theme(axis.text=element_text(size=8),
                                 axis.title=element_text(size=8,face="bold")) +
                           stat_summary(fun.y=mean, geom="point", shape=18, size=4, color="black", fill="white") +
                           facet_wrap(~cell_type, scales = "free")  
-MitPotenital_PLOT # print this figure...
+MitPotenital_PLOT_T1 # print this figure...
 
 ```
 
+## Timepoint 2 (8 days)
+
+```{r Analysis - Mitochondrial Potential Timepoint 1, echo=FALSE}
+
+# parse by cell type for stats
+
+MitPotential_MG_T2     <- MitPotential_dat %>% dplyr::filter(Timepoint %in% "8_days") %>% dplyr::filter(cell_type %in% 'mature_granular')   %>% na.omit()
+MitPotential_IG_T2     <- MitPotential_dat %>% dplyr::filter(Timepoint %in% "8_days") %>%  dplyr::filter(cell_type %in% 'immature_granular') %>% na.omit()
+MitPotential_MA_T2     <- MitPotential_dat %>% dplyr::filter(Timepoint %in% "8_days") %>%  dplyr::filter(cell_type %in% 'mature_agranular')  %>% na.omit()
+MitPotential_Degran_T2 <- MitPotential_dat %>% dplyr::filter(Timepoint %in% "8_days") %>%  dplyr::filter(cell_type %in% 'degranulated')      %>% na.omit()
+# view means :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 
+
+MitPotential_dat %>% 
+      na.omit() %>%  
+      summarySE(measurevar="Ratio_FL2.FL1", groupvars=c("pCO2_Treatment", "cell_type", "Timepoint")) %>% 
+      dplyr::mutate(pCO2 = case_when(pCO2_Treatment == "Low"  ~ "500 μatm", pCO2_Treatment == "High" ~ "1200 μatm")) %>% 
+      dplyr::arrange(cell_type)
+
+
+
+# ANOVA ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+MitPotential_dat_T2 <- MitPotential_dat %>% dplyr::filter(Timepoint %in% "8_days")
+
+# model - TWO way anova pCO2 * cell type ::::::::::::::::::::::::::::::::::
+
+MitPot_TwoWayANOVA_T2 <- lm(Ratio_FL2.FL1~pCO2_Treatment*cell_type, data = MitPotential_dat_T2)
+pander(anova(MitPot_TwoWayANOVA_T2), style='rmarkdown') # anova table of lmer
+# |            &nbsp;            |  Pr(>F)   |
+# |:----------------------------:|:---------:|
+# |      **pCO2_Treatment**      |  0.2985   |
+# |        **cell_type**         | 5.081e-10 |
+# | **pCO2_Treatment:cell_type** |  0.7841   |
+# |        **Residuals**         |    NA     |
+shapiro.test(residuals(MitPot_TwoWayANOVA_T2)) # normality of model residuals:  0.01457
+leveneTest(MitPot_TwoWayANOVA_T2) # heteroscedasticity (absence of homoscedasticity): 0.08157 
+
+
+# model - mature granular  ::::::::::::::::::::::::::::::::::
+
+MitPot_MG_ANOVA_T2 <- lm(Ratio_FL2.FL1~pCO2_Treatment, data = MitPotential_MG_T2)
+pander(anova(MitPot_MG_ANOVA_T2), style='rmarkdown') # anova table of lmer
+# |       &nbsp;       | Df |  Sum Sq   |  Mean Sq  | F value | Pr(>F) |
+# |:------------------:|:--:|:---------:|:---------:|:-------:|:------:|
+# | **pCO2_Treatment** | 1  | 0.0002681 | 0.0002681 | 0.5328  | 0.484  |
+# |   **Residuals**    | 9  | 0.004529  | 0.0005033 |   NA    |   NA   |
+shapiro.test(residuals(MitPot_MG_ANOVA_T2)) # normality of model residuals:  0.5324
+leveneTest(MitPot_MG_ANOVA_T2) # heteroscedasticity (absence of homoscedasticity): 0.7025
+
+
+# model - immature granular  ::::::::::::::::::::::::::::::::::
+
+MitPot_IG_ANOVA_T2 <- lm(Ratio_FL2.FL1~pCO2_Treatment, data = MitPotential_IG_T2)
+pander(anova(MitPot_IG_ANOVA_T2), style='rmarkdown') # anova table of lmer
+# |       &nbsp;       | Df |  Sum Sq  | Mean Sq  | F value | Pr(>F) |
+# |:------------------:|:--:|:--------:|:--------:|:-------:|:------:|
+# | **pCO2_Treatment** | 1  | 0.002097 | 0.002097 | 0.6313  | 0.4473 |
+# |   **Residuals**    | 9  | 0.02989  | 0.003321 |   NA    |   NA   |
+shapiro.test(residuals(MitPot_IG_ANOVA_T2)) # normality of model residuals:  0.8775
+leveneTest(MitPot_IG_ANOVA_T2) # heteroscedasticity (absence of homoscedasticity): 0.7179
+
+
+# model - mature agranular  ::::::::::::::::::::::::::::::::::
+
+MitPot_MA_ANOVA_T2 <- lm(Ratio_FL2.FL1~pCO2_Treatment, data = MitPotential_MA_T2)
+pander(anova(MitPot_MA_ANOVA_T2), style='rmarkdown') # anova table of lmer
+# |       &nbsp;       | Df |  Sum Sq  |  Mean Sq  | F value | Pr(>F) |
+# |:------------------:|:--:|:--------:|:---------:|:-------:|:------:|
+# | **pCO2_Treatment** | 1  | 1.13e-06 | 1.13e-06  | 0.00274 | 0.9594 |
+# |   **Residuals**    | 9  | 0.003713 | 0.0004125 |   NA    |   NA   |
+shapiro.test(residuals(MitPot_MA_ANOVA_T2)) # normality of model residuals:  0.1874
+leveneTest(MitPot_MA_ANOVA_T2) # heteroscedasticity (absence of homoscedasticity): 0.9157
+
+
+# model - degranulated ::::::::::::::::::::::::::::::::::
+
+MitPot_Degran_ANOVA_T2 <- lm(Ratio_FL2.FL1~pCO2_Treatment, data = MitPotential_Degran_T2)
+pander(anova(MitPot_Degran_ANOVA_T2), style='rmarkdown') # anova table of lmer
+# |       &nbsp;       | Df |  Sum Sq  |  Mean Sq  | F value | Pr(>F) |
+# |:------------------:|:--:|:--------:|:---------:|:-------:|:------:|
+# | **pCO2_Treatment** | 1  | 4.75e-05 | 4.75e-05  | 0.2617  | 0.6212 |
+# |   **Residuals**    | 9  | 0.001633 | 0.0001815 |   NA    |   NA   |
+shapiro.test(residuals(MitPot_Degran_ANOVA_T2)) # normality of model residuals:  0.7806
+leveneTest(MitPot_Degran_ANOVA_T2) # heteroscedasticity (absence of homoscedasticity): 0.4094
+
+
+
+
+# plot :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+
+
+MitPotenital_PLOT_T2 <- ggplot(MitPotential_dat_T2, aes(x = factor(pCO2, level = c('500 μatm', '1200 μatm')), Ratio_FL2.FL1 , fill = pCO2)) +
+                          theme(panel.grid=element_blank()) +
+                          geom_boxplot(size=0.2, width=0.5, alpha=0.1, aes(fill=pCO2)) +
+                          scale_fill_manual(values=c("grey20","white")) +
+                          geom_point(shape = 21, size = 2, position = position_jitterdodge(jitter.width = 0.1)) +
+                          theme_classic() +
+                          scale_x_discrete(labels= c('~500 μatm', '~1200 μatm')) +
+                         # scale_y_continuous(expand = c(0, 0), limits = c(0, 2)) +
+                          labs(title = "Cvirginica - Mitchondrial potential under OA (8 days)", 
+                               y = expression(Arbitrary~units~"("~A~U~")"),
+                               x = expression(italic(p)*CO[2]~Treatment~"("~μ*atm~")")) + 
+                          theme(axis.text=element_text(size=8),
+                                axis.title=element_text(size=8,face="bold")) +
+                          stat_summary(fun.y=mean, geom="point", shape=18, size=4, color="black", fill="white") +
+                          facet_wrap(~cell_type, scales = "free")  
+MitPotenital_PLOT_T2 # print this figure...
+
+```
+
+## Plot and export 
+
+```{r Plots, echo=FALSE}
+# Export the figures to pdf
+ggarrange(MitPotenital_PLOT_T1,MitPotenital_PLOT_T2,nrow = 2) %>%
+  ggexport(filename = "C:/Users/samjg/Documents/Github_repositories/Cvirginica_hemolymph_OA_trial/RAnalysis/Flow_cytometry_data/Output/MitochondrialPotential_T1_T2.pdf")
+
+
+MitPotenital_PLOT_Degran <- MitPotential_dat %>% 
+                                dplyr::filter(cell_type %in% 'degranulated') %>% 
+                                ggplot(aes(x = factor(pCO2, level = c('500 μatm', '1200 μatm')), Ratio_FL2.FL1 , fill = pCO2)) +
+                                  theme(panel.grid=element_blank()) +
+                                  geom_boxplot(size=0.2, width=0.5, alpha=0.1, aes(fill=pCO2)) +
+                                  scale_fill_manual(values=c("grey20","white")) +
+                                  geom_point(shape = 21, size = 2, position = position_jitterdodge(jitter.width = 0.1)) +
+                                  theme_classic() +
+                                  scale_x_discrete(labels= c('~500 μatm', '~1200 μatm')) +
+                                 # scale_y_continuous(expand = c(0, 0), limits = c(0, 2)) +
+                                  labs(title = "Mit. potential, degranulated cells", 
+                                       y = expression(Arbitrary~units~"("~A~U~")"),
+                                       x = expression(italic(p)*CO[2]~Treatment~"("~μ*atm~")")) + 
+                                  theme(axis.text=element_text(size=8),
+                                        axis.title=element_text(size=8,face="bold")) +
+                                  stat_summary(fun.y=mean, geom="point", shape=18, size=4, color="black", fill="white") +
+                                  facet_wrap(~Timepoint)  
+
+
+MitPotenital_PLOT_MG <- MitPotential_dat %>% 
+                                dplyr::filter(cell_type %in% 'mature_granular') %>% 
+                                ggplot(aes(x = factor(pCO2, level = c('500 μatm', '1200 μatm')), Ratio_FL2.FL1 , fill = pCO2)) +
+                                  theme(panel.grid=element_blank()) +
+                                  geom_boxplot(size=0.2, width=0.5, alpha=0.1, aes(fill=pCO2)) +
+                                  scale_fill_manual(values=c("grey20","white")) +
+                                  geom_point(shape = 21, size = 2, position = position_jitterdodge(jitter.width = 0.1)) +
+                                  theme_classic() +
+                                  scale_x_discrete(labels= c('~500 μatm', '~1200 μatm')) +
+                                 # scale_y_continuous(expand = c(0, 0), limits = c(0, 2)) +
+                                  labs(title = "Mit. potential, mature granular", 
+                                       y = expression(Arbitrary~units~"("~A~U~")"),
+                                       x = expression(italic(p)*CO[2]~Treatment~"("~μ*atm~")")) + 
+                                  theme(axis.text=element_text(size=8),
+                                        axis.title=element_text(size=8,face="bold")) +
+                                  stat_summary(fun.y=mean, geom="point", shape=18, size=4, color="black", fill="white") +
+                                  facet_wrap(~Timepoint)  
+
+
+MitPotenital_PLOT_IG <- MitPotential_dat %>% 
+                                dplyr::filter(cell_type %in% 'immature_granular') %>% 
+                                ggplot(aes(x = factor(pCO2, level = c('500 μatm', '1200 μatm')), Ratio_FL2.FL1 , fill = pCO2)) +
+                                  theme(panel.grid=element_blank()) +
+                                  geom_boxplot(size=0.2, width=0.5, alpha=0.1, aes(fill=pCO2)) +
+                                  scale_fill_manual(values=c("grey20","white")) +
+                                  geom_point(shape = 21, size = 2, position = position_jitterdodge(jitter.width = 0.1)) +
+                                  theme_classic() +
+                                  scale_x_discrete(labels= c('~500 μatm', '~1200 μatm')) +
+                                 # scale_y_continuous(expand = c(0, 0), limits = c(0, 2)) +
+                                  labs(title = "Mit. potential, immature granular", 
+                                       y = expression(Arbitrary~units~"("~A~U~")"),
+                                       x = expression(italic(p)*CO[2]~Treatment~"("~μ*atm~")")) + 
+                                  theme(axis.text=element_text(size=8),
+                                        axis.title=element_text(size=8,face="bold")) +
+                                  stat_summary(fun.y=mean, geom="point", shape=18, size=4, color="black", fill="white") +
+                                  facet_wrap(~Timepoint)  
+
+
+MitPotenital_PLOT_MA <- MitPotential_dat %>% 
+                                dplyr::filter(cell_type %in% 'mature_agranular') %>% 
+                                ggplot(aes(x = factor(pCO2, level = c('500 μatm', '1200 μatm')), Ratio_FL2.FL1 , fill = pCO2)) +
+                                  theme(panel.grid=element_blank()) +
+                                  geom_boxplot(size=0.2, width=0.5, alpha=0.1, aes(fill=pCO2)) +
+                                  scale_fill_manual(values=c("grey20","white")) +
+                                  geom_point(shape = 21, size = 2, position = position_jitterdodge(jitter.width = 0.1)) +
+                                  theme_classic() +
+                                  scale_x_discrete(labels= c('~500 μatm', '~1200 μatm')) +
+                                 # scale_y_continuous(expand = c(0, 0), limits = c(0, 2)) +
+                                  labs(title = "Mit. potential, mature agranular)", 
+                                       y = expression(Arbitrary~units~"("~A~U~")"),
+                                       x = expression(italic(p)*CO[2]~Treatment~"("~μ*atm~")")) + 
+                                  theme(axis.text=element_text(size=8),
+                                        axis.title=element_text(size=8,face="bold")) +
+                                  stat_summary(fun.y=mean, geom="point", shape=18, size=4, color="black", fill="white") +
+                                  facet_wrap(~Timepoint)  
+# Export the figures to pdf
+ggarrange(MitPotenital_PLOT_Degran,MitPotenital_PLOT_MG, MitPotenital_PLOT_IG,MitPotenital_PLOT_MA,nrow = 2, ncol = 2) %>%
+  ggexport(filename = "C:/Users/samjg/Documents/Github_repositories/Cvirginica_hemolymph_OA_trial/RAnalysis/Flow_cytometry_data/Output/MitochondrialPotential_cell_type.pdf", width = 12, height = 15)
+```
+
+
+# DCFHDA - Reactive oxygen species / oxidative stress  
+
+## Timepoint 2 (8 days)  - NOTe: we do not have data for timepoint 1
 
 ```{r Analysis - Mitochondrial Potential, echo=FALSE}
 
