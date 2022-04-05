@@ -25,7 +25,7 @@ library(ggpubr)
 
 # SET WORKING DIRECTORY :::::::::::::::::::::::::::::::::::::::::::::::
 
- setwd("C:/Users/samuel.gurr/Documents/Github_repositories/Cvirginica_hemolymph_OA/RAnalysis/") # personal computer
+ setwd("C:/Users/samjg/Documents/Github_repositories/Cvirginica_hemolymph_OA/RAnalysis/") # personal computer
 # setwd("C:/Users/samjg/Documents/Github_repositories/Airradians_multigen_OA/RAnalysis") # Work computer
 
 # LOAD DATA :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
