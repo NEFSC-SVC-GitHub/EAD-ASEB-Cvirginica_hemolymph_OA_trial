@@ -351,7 +351,7 @@ MitPotenital_PLOT_MA <- MitPotential_dat %>%
                                   facet_wrap(~Timepoint)  
 # Export the figures to pdf
 ggarrange(MitPotenital_PLOT_Degran,MitPotenital_PLOT_MG, MitPotenital_PLOT_IG,MitPotenital_PLOT_MA,nrow = 2, ncol = 2) %>%
-  ggexport(filename = "C:/Users/samjg/Documents/Github_repositories/Cvirginica_hemolymph_OA_trial/RAnalysis/Flow_cytometry_data/Output/MitochondrialPotential_cell_type.pdf", width = 12, height = 15)
+  ggexport(filename = "C:/Users/samjg/Documents/Github_repositories/Cvirginica_hemolymph_OA_trial/RAnalysis/Flow_cytometry_data/Output/MitochondrialPotential_cell_type.pdf", width = 12, height = 10)
 ```
 
 
